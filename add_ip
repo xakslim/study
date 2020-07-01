@@ -1,0 +1,54 @@
+# -*- coding: utf-8 -*-
+import datetime
+import os
+
+from airflow.models import DAG
+from airflow.operators.python_operator import PythonOperator
+
+
+date = datetime.datetime(2015, 1, 1)
+
+def add_ip(**kwargs):
+    if kwargs:
+        ip = kwargs['ip']
+        print('kwargs:', kwargs)
+        file_path = '/home/user/black_list.txt'
+        exist_ip = False
+
+        if os.path.exists(file_path):
+            f = open(file_path, 'r')
+            for line in f:
+                if ip in line:
+                    exist_ip = True
+                    break
+            f.close()
+            if not exist_ip:
+                f = open(file_path, 'a')
+                f.writelines(ip + '\n')
+                f.close()
+        else:
+            f = open(file_path, 'w')
+            f.write(ip + '\n')
+            f.close()
+
+    else:
+        return 'not kwargs'
+
+args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': date
+}
+
+with DAG('add_ip_to_blacklist', default_args=args, schedule_interval=None) as dag:
+
+    task2 = PythonOperator(
+        task_id='check_ip',
+        python_callable=add_ip,
+        provide_context=True,
+        # op_kwargs={'key1': 'value1'},
+        dag=dag,
+    )
+
+
+
